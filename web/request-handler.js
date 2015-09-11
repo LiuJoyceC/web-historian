@@ -7,26 +7,56 @@ var url = require('url');
 // require more modules/folders here!
 
 exports.handleRequest = function (req, res) {
-  console.log(req.method + 'hellooooooo');
-  if (req.method === 'POST') {
+
+  var options = {
+    GET: function(){
+      var urlPath = url.parse(req.url).pathname;
+      var pathname = urlPath === '/' ? '/index.html' : urlPath;
+      helpers.serveAssets(res, pathname, function(){
+        archive.isUrlInList(urlPath, function(found){
+          if(found){
+            helpers.sendRedirect(res, '/loading.html');
+          }else{
+            helpers.send404(res);
+          }
+        });
+      });
+    },
+
+    POST: function(){
       var fullBody = '';
       req.on('data', function(chunk) {
         fullBody += chunk;
-        var urlObj = JSON.parse(fullBody);
-        fs.appendFileSync(archive.paths.list, urlObj.url + '\n' );
-        console.log('Im being run here!!!!');
-        res.writeHead(302, helpers.headers);
-        res.end();
       });
+      req.on('end', function() {
+        if (fullBody.trim()[0] === '{') { // necessary to pass tests
+          var url = JSON.parse(fullBody).url;
+        } else {
+          var url = fullBody.split('=')[1];
+        }
+        archive.isUrlInList(url, function(found){
+          if(found){
+            archive.isUrlArchived(url, function(foundInArchive){
+              if(foundInArchive){
+                helpers.sendRedirect(res, '/'+ url);
+              }else{
+                helpers.sendRedirect(res, '/loading.html');
+              }
+            })
+          }else{
+            archive.addUrlToList(url, function(){
+              helpers.sendRedirect(res, '/loading.html');
+            });
+          }
+        });
+      });
+    }
+  };
+
+  if(options[req.method]){
+    options[req.method]();
+  }else{
+    helpers.send404(res);
   }
 
-  //res.writeHead(200, helpers.headers);
-  //var pathname = req.url === '/' ? './web/public/index.html' : './archives/sites/' + req.url;
-  if(req.method === 'GET'){
-    helpers.serveAssets(res, req.url);
-  }
-  //res.end(archive.paths.list);
-
-  //res.write('helloooooo');
-  //res.end('helloooo');
 };

@@ -6,7 +6,11 @@ var path = require('path');
 var supertest = require('supertest');
 
 archive.initialize({
-  list: path.join(__dirname, "/testdata/sites.txt")
+  list: path.join(__dirname, "/testdata/sites.txt"),
+  // added this to prevent tests from failing every time we
+  // add a new site in our archives. this will create a
+  // separate archives folder for testing, just like sites.txt
+  archivedSites: path.join(__dirname, "/testdata/archives")
 });
 
 var request = supertest.agent(server);
@@ -105,7 +109,7 @@ describe("archive helpers", function(){
   });
 
   describe("#addUrlToList", function () {
-    xit("should add a url to the list", function (done) {
+    it("should add a url to the list", function (done) {
       var urlArray = ["example1.com", "example2.com\n"];
       fs.writeFileSync(archive.paths.list, urlArray.join("\n"));
 
@@ -119,7 +123,7 @@ describe("archive helpers", function(){
   });
 
   describe("#isUrlArchived", function () {
-    xit("should check if a url is archived", function (done) {
+    it("should check if a url is archived", function (done) {
       fs.writeFileSync(archive.paths.archivedSites + "/www.example.com", "blah blah");
 
       var counter = 0;
@@ -138,7 +142,7 @@ describe("archive helpers", function(){
   });
 
   describe("#downloadUrls", function () {
-    xit("should download all pending urls in the list", function (done) {
+    it("should download all pending urls in the list", function (done) {
       var urlArray = ["www.example.com", "www.google.com"];
       archive.downloadUrls(urlArray);
 
@@ -146,7 +150,7 @@ describe("archive helpers", function(){
       setTimeout(function () {
         expect(fs.readdirSync(archive.paths.archivedSites)).to.deep.equal(urlArray);
         done();
-      }, 25);
+      }, 300);
     });
   });
 });

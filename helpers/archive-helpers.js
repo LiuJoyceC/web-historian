@@ -1,6 +1,9 @@
 var fs = require('fs');
 var path = require('path');
 var _ = require('underscore');
+var http = require('http');
+var util = require('util');
+var requestMod = require('request');
 
 /*
  * You will need to reuse the same paths many times over in the course of this sprint.
@@ -30,27 +33,50 @@ exports.readListOfUrls = function(callback){
     if(error){
       console.error(error);
     }else{
-      console.log(typeof text);
-      console.log(callback);
-    var urls = text.split('\n');
-    console.log(urls);
-    callback(urls);
-  }
+      var urls = text.split('\n');
+      callback(urls);
+    }
   });
-
 };
 
-exports.isUrlInList = function(){
+exports.isUrlInList = function(url, callback){
+  exports.readListOfUrls(function(urls) {
+    callback(_.indexOf(urls,url) !== -1);
+  })
 };
 
-exports.addUrlToList = function(){
+exports.addUrlToList = function(url, callback){
+  //call isUrlInList
+  //if not, then append url to file
+  exports.isUrlInList(url, function(isInList) {
+    if (!isInList) {
+      fs.appendFile(exports.paths.list, url + '\n', function(err, data) {
+        if (err) {
+          console.error(err)
+        } else {
+          callback();
+        }
+      });
+    }
+  });
 };
 
-exports.isUrlArchived = function(url){
-  var urlList = fs.readdirSync(exports.paths.archivedSites);
-  return _.indexOf(urlList, url) !== -1;
+exports.isUrlArchived = function(url, callback){
+  fs.readdir(exports.paths.archivedSites, function(error, files){
+    if(error){
+      console.error(error);
+    }else{
+      callback(_.indexOf(files, url)!== -1);
+    }
+  });
 };
 
-exports.downloadUrls = function(){
-   return fs.readdirSync(exports.paths.archivedSites);
+exports.downloadUrls = function(urlArray){
+  _.each(urlArray, function(url) {
+    requestMod('http://' + url, function (error, response, body) {
+      if (!error && response.statusCode === 200) {
+        fs.writeFile(exports.paths.archivedSites + '/' + url, body);
+      }
+    });
+  });
 };
